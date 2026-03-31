@@ -1,0 +1,62 @@
+name: Build Windows Executable
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller `
+            --name="DocumentTranslator" `
+            --onefile `
+            --windowed `
+            --add-data="translation_app;translation_app" `
+            --add-data="docs;docs" `
+            --hidden-import=tkinter `
+            --hidden-import=tkinter.ttk `
+            --hidden-import=tkinter.scrolledtext `
+            --hidden-import=docx `
+            --hidden-import=openpyxl `
+            --hidden-import=requests `
+            --hidden-import=deep_translator `
+            --hidden-import=pyperclip `
+            --exclude-module=matplotlib `
+            --exclude-module=numpy `
+            --exclude-module=pandas `
+            main.py --clean
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: github.event_name == 'release'
+      with:
+        files: dist/DocumentTranslator.exe
+        asset_name: DocumentTranslator.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: DocumentTranslator
+        path: dist/DocumentTranslator.exe
